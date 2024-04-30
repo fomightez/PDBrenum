@@ -289,7 +289,7 @@ def poly_nonpoly_renum(mmcif_dict, df_PDBe_PDB_UniProt, chains_to_change, defaul
             except KeyError:
                 pass
 
-        poly_nonpoly_append = df_pdbx_poly_seq_scheme_pdb_final.append(df_mmCIF_pdbx_nonpoly_scheme)
+        poly_nonpoly_append = pd.concat([df_pdbx_poly_seq_scheme_pdb_final, df_mmCIF_pdbx_nonpoly_scheme]) # fix for Pandas 2 removing `append` according to https://stackoverflow.com/a/75956237/8508004
         poly_nonpoly_append = poly_nonpoly_append[["PDBe", "PDB", "UniProt", "PDBe_num_and_chain", "PDB_num_and_chain", "AccessionID", "Uni_or_50k"]]
     else:
         poly_nonpoly_append = df_pdbx_poly_seq_scheme_pdb_final[
@@ -739,7 +739,7 @@ def master_mmCIF_renumber_function(input_mmCIF_file_were_found, default_input_pa
         mmcif_dict = product_of_mmCIF_parser[1]
 
         poly_nonpoly_append = poly_nonpoly_renum(mmcif_dict, df_PDBe_PDB_UniProt, chains_to_change, default_mmCIF_num)
-        poly_nonpoly_atom_site = poly_nonpoly_append.append(df_final_atom_site).drop_duplicates(subset="PDB_num_and_chain", keep='first')
+        poly_nonpoly_atom_site = pd.concat([poly_nonpoly_append,df_final_atom_site]).drop_duplicates(subset="PDB_num_and_chain", keep='first') # fix for Pandas 2 removing `append` according to https://stackoverflow.com/a/75956237/8508004
 
         formed_columns = column_formation(mmcif_dict)
         renumber_tables(formed_columns, mmcif_dict, poly_nonpoly_atom_site, chains_to_change, default_mmCIF_num)
