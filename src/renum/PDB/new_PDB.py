@@ -276,7 +276,7 @@ def non_poly_num(pd_series_index_PDBe, num_ins_code_name_chain_HETATM):
             'PDB', "PDB_chain", "numbers"])
     df_nonpoly_dropped_dup = df_nonpoly.drop_duplicates(subset="PDB", keep='first')
     df_nonpoly_dropped_dup_sorted = df_nonpoly_dropped_dup.sort_values(["PDB_chain", "numbers"], ascending=(True, True)).reset_index(drop=True)
-    small_ref_table = df_nonpoly_dropped_dup_sorted.set_index(["PDB_chain", "PDB"]).count(level="PDB_chain")
+    small_ref_table = df_nonpoly_dropped_dup_sorted.set_index(["PDB_chain", "PDB"]).groupby(level="PDB_chain").count() #fixed to handle `level` keyword for many functions being deprecated/removed, based on https://stackoverflow.com/a/69618445/8508004
 
     all_nonpoly_chains = list()
     for n in small_ref_table.index:
@@ -301,10 +301,11 @@ def non_poly_num(pd_series_index_PDBe, num_ins_code_name_chain_HETATM):
         ["available_chain", "available_number"], ascending=(True, False)).reset_index(drop=True)
 
     df_for_nonpoly_replace = pd.DataFrame(list(), columns=['available_chain', "available_number"])
-    for n in df_nonpoly_dropped_dup_sorted.set_index(["PDB_chain", "PDB"]).count(level="PDB_chain").index:
+    # April 2024 fixed next line to handle level keyword for many functions being deprecated/removed, based on https://stackoverflow.com/a/69618445/8508004
+    for n in df_nonpoly_dropped_dup_sorted.set_index(["PDB_chain", "PDB"]).groupby(level="PDB_chain").count().index:
         temporal_df_for_addition_of_available_num = df_chain_and_num_available_sorted.where(
             df_chain_and_num_available_sorted['available_chain'] == n).dropna()[0:(small_ref_table["numbers"][n])]
-        df_for_nonpoly_replace = df_for_nonpoly_replace.append(temporal_df_for_addition_of_available_num, ignore_index=True)
+        df_for_nonpoly_replace = pd.concat([df_for_nonpoly_replace,temporal_df_for_addition_of_available_num], ignore_index=True) # fix for Pandas 2 removing `append` according to https://stackoverflow.com/a/75956237/8508004
 
     df_final_nonpoly = pd.merge(left=df_nonpoly_dropped_dup_sorted, right=df_for_nonpoly_replace, left_index=True, right_index=True)
 
@@ -339,8 +340,8 @@ def remark_465(missing_res_remark_465, df_PDBe_PDB_UniProt):
 
 
 def final_dict_formation(df_final_poly_corrected, df_final_nonpoly_corrected, final_remark_465, chains_to_change):
-    all_data_df = df_final_poly_corrected.append(df_final_nonpoly_corrected, ignore_index=True, sort=False)
-    all_data_df = all_data_df.append(final_remark_465, ignore_index=True, sort=False)
+    all_data_df = pd.concat([df_final_poly_corrected,df_final_nonpoly_corrected], ignore_index=True, sort=False)  # fix for Pandas 2 removing `append` according to https://stackoverflow.com/a/75956237/8508004
+    all_data_df = pd.concat([all_data_df,final_remark_465], ignore_index=True, sort=False)  # fix for Pandas 2 removing `append` according to https://stackoverflow.com/a/75956237/8508004
     all_data_df_drop_dup = all_data_df.drop_duplicates(subset="PDB_str", keep='first')
     not_in_chains_to_change = all_data_df_drop_dup.PDB.map(lambda x: x if x[2] in chains_to_change else "not_in_chains_to_change")
     all_data_merged_not_in_chain_to_change = all_data_df_drop_dup.merge(not_in_chains_to_change.rename('not_in_chains_to_change'),
